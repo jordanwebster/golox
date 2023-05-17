@@ -49,21 +49,21 @@ func runFile(path string) {
 		os.Exit(65)
 	}
 
-    if loxerror.HadRuntimeError() {
-        os.Exit(70)
-    }
+	if loxerror.HadRuntimeError() {
+		os.Exit(70)
+	}
 }
 
 func run(source string) {
 	scanner := scanner.NewScanner(source)
-    tokens := scanner.ScanTokens()
-    parser := parser.NewParser(tokens) 
-    expr := parser.Parse()
+	tokens := scanner.ScanTokens()
+	parser := parser.NewParser(tokens)
+	expr := parser.Parse()
 
-    if loxerror.HadError() {
-        return
-    }
+	if loxerror.HadError() {
+		return
+	}
 
-    interpreter := interpreter.NewInterpreter()
-    interpreter.Interpret(expr)
+	interpreter := interpreter.NewInterpreter()
+	interpreter.Interpret(expr)
 }
