@@ -7,20 +7,20 @@ type Expr interface {
 }
 
 type BinaryExpr struct {
-	operator token.Token
-	left     Expr
-	right    Expr
+	Operator token.Token
+	Left     Expr
+	Right    Expr
 }
 
 type GroupingExpr struct {
-	expression Expr
+	Expression Expr
 }
 
 type LiteralExpr struct {
-	value interface{}
+	Value interface{}
 }
 
 type UnaryExpr struct {
-	operator token.Token
-	right    Expr
+	Operator token.Token
+	Right    Expr
 }
