@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/jordanwebster/golox/error"
 )
 
 func main() {
@@ -25,6 +27,7 @@ func runPrompt() {
     for scanner.Scan() {
         line := scanner.Text()
         run(line)
+        error.ClearError()
         fmt.Print("> ")
     }
 }
@@ -35,6 +38,10 @@ func runFile(path string) {
         log.Fatal(err)
     }
     run(string(source))
+
+    if error.HadError() {
+        os.Exit(65)
+    }
 }
 
 func run(source string) {
