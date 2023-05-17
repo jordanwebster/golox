@@ -11,6 +11,7 @@ type codegenArgs struct {
 	path           string
 	visitorName    string
 	visitorArgName string
+	returnType     string
 }
 
 func main() {
@@ -19,11 +20,13 @@ func main() {
 			path:           "ast/expr.go",
 			visitorName:    "ExprVisitor",
 			visitorArgName: "expr",
+			returnType:     "(interface{}, error)",
 		},
 		{
 			path:           "ast/stmt.go",
 			visitorName:    "StmtVisitor",
 			visitorArgName: "stmt",
+			returnType:     "error",
 		},
 	}
 
@@ -58,17 +61,17 @@ type {{interface_name}} interface {
 
 	var visitorMethods []string
 	for _, t := range types {
-		visitorMethods = append(visitorMethods, fmt.Sprintf("    Visit%s(%s *%s) (interface{}, error)", t, args.visitorArgName, t))
+		visitorMethods = append(visitorMethods, fmt.Sprintf("    Visit%s(%s *%s) %s", t, args.visitorArgName, t, args.returnType))
 	}
 	re = regexp.MustCompile(`{{visitor_methods}}`)
 	template = re.ReplaceAllString(template, strings.Join(visitorMethods, "\n"))
 
 	var typeAcceptMethods []string
 	for _, t := range types {
-		f := `func (%s *%s) Accept(visitor %s) (interface{}, error) {
+		f := `func (%s *%s) Accept(visitor %s) %s {
     return visitor.Visit%s(%s)
 }`
-		typeAcceptMethods = append(typeAcceptMethods, fmt.Sprintf(f, args.visitorArgName, t, args.visitorName, t, args.visitorArgName))
+		typeAcceptMethods = append(typeAcceptMethods, fmt.Sprintf(f, args.visitorArgName, t, args.visitorName, args.returnType, t, args.visitorArgName))
 	}
 	re = regexp.MustCompile(`{{type_accept_methods}}`)
 	template = re.ReplaceAllString(template, strings.Join(typeAcceptMethods, "\n"))
