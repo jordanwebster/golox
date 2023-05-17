@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/interpreter"
 	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/parser"
+	"github.com/jordanwebster/golox/scanner"
 )
 
 //go:generate go run ./ast/cmd/gen.go
@@ -55,7 +55,7 @@ func runFile(path string) {
 }
 
 func run(source string) {
-	scanner := NewScanner(source)
+	scanner := scanner.NewScanner(source)
     tokens := scanner.ScanTokens()
     parser := parser.NewParser(tokens) 
     expr := parser.Parse()
@@ -64,9 +64,8 @@ func run(source string) {
         return
     }
     // TODO: 
-    // 1. Move scanner to own module
-    // 2. Ensure parse is not swallowing errors
-    // 3. Make error module API consisent
+    // 1. Ensure parse is not swallowing errors
+    // 2. Make error module API consisent
 
     interpreter := interpreter.NewInterpreter()
     interpreter.Interpret(expr)
