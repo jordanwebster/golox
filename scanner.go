@@ -133,17 +133,17 @@ func (scanner *Scanner) scanToken() {
 	}
 }
 
-func (scanner *Scanner) advance() rune {
-	c := []rune(scanner.source)[scanner.current]
+func (scanner *Scanner) advance() byte {
+	c := scanner.source[scanner.current]
 	scanner.current += 1
 	return c
 }
 
-func (scanner *Scanner) match(expected rune) bool {
+func (scanner *Scanner) match(expected byte) bool {
 	if scanner.isAtEnd() {
 		return false
 	}
-	if []rune(scanner.source)[scanner.current] != expected {
+	if scanner.source[scanner.current] != expected {
 		return false
 	}
 
@@ -151,20 +151,20 @@ func (scanner *Scanner) match(expected rune) bool {
 	return true
 }
 
-func (scanner *Scanner) peek() rune {
+func (scanner *Scanner) peek() byte {
 	if scanner.isAtEnd() {
 		return 0
 	} else {
-        return []rune(scanner.source)[scanner.current]
+        return scanner.source[scanner.current]
 	}
 }
 
-func (scanner *Scanner) peekNext() rune {
+func (scanner *Scanner) peekNext() byte {
 	if scanner.current+1 >= len(scanner.source) {
 		return 0
 	}
 
-	return []rune(scanner.source)[scanner.current+1]
+	return scanner.source[scanner.current+1]
 }
 
 func (scanner *Scanner) addToken(tokenType TokenType) {
@@ -199,7 +199,7 @@ func (scanner *Scanner) addString() {
 	value := scanner.source[scanner.start+1 : scanner.current-1]
 	scanner.addTokenWithLiteral(STRING, value)
 }
-func (scanner *Scanner) isDigit(c rune) bool {
+func (scanner *Scanner) isDigit(c byte) bool {
     return c >= '0' && c <= '9'
 }
 
@@ -238,10 +238,10 @@ func (scanner *Scanner) addIdentifier() {
 	scanner.addToken(tokenType)
 }
 
-func (scanner *Scanner) isAlpha(c rune) bool {
+func (scanner *Scanner) isAlpha(c byte) bool {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
 }
 
-func (scanner *Scanner) isAlphaNumeric(c rune) bool {
+func (scanner *Scanner) isAlphaNumeric(c byte) bool {
 	return scanner.isAlpha(c) || scanner.isDigit(c)
 }
