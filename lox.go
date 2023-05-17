@@ -6,8 +6,12 @@ import (
 	"log"
 	"os"
 
+	_ "github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/error"
 )
+
+//go:generate go run ./ast/cmd/gen.go
+//go:generate go fmt ./ast
 
 func main() {
 	switch numArgs := len(os.Args); numArgs {
