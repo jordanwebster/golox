@@ -3,7 +3,7 @@ package ast
 import "github.com/jordanwebster/golox/token"
 
 type Expr interface {
-	Accept(visitor ExprVisitor) interface{}
+	Accept(visitor ExprVisitor) (interface{}, error)
 }
 
 type BinaryExpr struct {

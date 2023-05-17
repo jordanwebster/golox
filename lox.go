@@ -7,7 +7,9 @@ import (
 	"os"
 
 	_ "github.com/jordanwebster/golox/ast"
+	"github.com/jordanwebster/golox/interpreter"
 	"github.com/jordanwebster/golox/loxerror"
+	"github.com/jordanwebster/golox/parser"
 )
 
 //go:generate go run ./ast/cmd/gen.go
@@ -46,12 +48,26 @@ func runFile(path string) {
 	if loxerror.HadError() {
 		os.Exit(65)
 	}
+
+    if loxerror.HadRuntimeError() {
+        os.Exit(70)
+    }
 }
 
 func run(source string) {
-	fmt.Println("Executing", source)
 	scanner := NewScanner(source)
-	for _, token := range scanner.ScanTokens() {
-		fmt.Println(token)
-	}
+    tokens := scanner.ScanTokens()
+    parser := parser.NewParser(tokens) 
+    expr := parser.Parse()
+
+    if loxerror.HadError() {
+        return
+    }
+    // TODO: 
+    // 1. Move scanner to own module
+    // 2. Ensure parse is not swallowing errors
+    // 3. Make error module API consisent
+
+    interpreter := interpreter.NewInterpreter()
+    interpreter.Interpret(expr)
 }

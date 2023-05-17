@@ -30,14 +30,14 @@ type ExprVisitor interface {
 
 	var visitorMethods []string
 	for _, t := range types {
-		visitorMethods = append(visitorMethods, fmt.Sprintf("    Visit%s(expr *%s) interface{}", t, t))
+		visitorMethods = append(visitorMethods, fmt.Sprintf("    Visit%s(expr *%s) (interface{}, error)", t, t))
 	}
 	re = regexp.MustCompile(`{{visitor_methods}}`)
 	template = re.ReplaceAllString(template, strings.Join(visitorMethods, "\n"))
 
 	var typeAcceptMethods []string
 	for _, t := range types {
-		f := `func (expr *%s) Accept(visitor ExprVisitor) interface{} {
+		f := `func (expr *%s) Accept(visitor ExprVisitor) (interface{}, error) {
     return visitor.Visit%s(expr)
 }`
 		typeAcceptMethods = append(typeAcceptMethods, fmt.Sprintf(f, t, t))

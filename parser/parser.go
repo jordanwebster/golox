@@ -19,7 +19,14 @@ type Parser struct {
 	current int
 }
 
-func (parser *Parser) parse() ast.Expr {
+func NewParser(tokens []token.Token) *Parser {
+    return &Parser{
+        tokens: tokens,
+        current: 0,
+    }
+}
+
+func (parser *Parser) Parse() ast.Expr {
 	expr, err := parser.expression()
 	if err != nil {
 		return nil

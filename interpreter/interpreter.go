@@ -1,83 +1,147 @@
 package interpreter
 
 import (
+	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/jordanwebster/golox/ast"
+	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/token"
 )
 
 type Interpreter struct{}
 
-func (interpreter *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
-	return expr.Value
+func NewInterpreter() *Interpreter {
+	return &Interpreter{}
 }
 
-func (interpreter *Interpreter) VisitGroupingExpr(expr *ast.GroupingExpr) interface{} {
+func (interpreter *Interpreter) Interpret(expr ast.Expr) {
+	value, err := interpreter.evaluate(expr)
+	if err != nil {
+		switch err.(type) {
+		case *loxerror.RuntimeError:
+			loxerror.ReportRuntimeError(err.(*loxerror.RuntimeError))
+		default:
+			panic(err)
+		}
+	} else {
+		fmt.Println(stringify(value))
+	}
+}
+
+func (interpreter *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) (interface{}, error) {
+	return expr.Value, nil
+}
+
+func (interpreter *Interpreter) VisitGroupingExpr(expr *ast.GroupingExpr) (interface{}, error) {
 	return interpreter.evaluate(expr.Expression)
 }
 
-func (interpreter *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
-	right := interpreter.evaluate(expr.Right)
+func (interpreter *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) (interface{}, error) {
+	right, err := interpreter.evaluate(expr.Right)
+	if err != nil {
+		return nil, err
+	}
 
 	switch expr.Operator.Type {
 	case token.BANG:
-		return !interpreter.isTruthy(right)
+		return !isTruthy(right), nil
 	case token.MINUS:
-		return -1 * right.(float64)
+		err := checkNumberOperand(expr.Operator, right)
+		if err != nil {
+			return nil, err
+		}
+
+		return -1 * right.(float64), nil
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (interpreter *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
-	left := interpreter.evaluate(expr.Left)
-	right := interpreter.evaluate(expr.Right)
+func (interpreter *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) (interface{}, error) {
+	left, err := interpreter.evaluate(expr.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := interpreter.evaluate(expr.Right)
+	if err != nil {
+		return nil, err
+	}
 
 	switch expr.Operator.Type {
 	case token.GREATER:
-		return left.(float64) > right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) > right.(float64), nil
 	case token.GREATER_EQUAL:
-		return left.(float64) >= right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) >= right.(float64), nil
 	case token.LESS:
-		return left.(float64) < right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) < right.(float64), nil
 	case token.LESS_EQUAL:
-		return left.(float64) <= right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) <= right.(float64), nil
 	case token.BANG_EQUAL:
-		return !interpreter.isEqual(left, right)
+		return isEqual(left, right), nil
 	case token.EQUAL_EQUAL:
-		return interpreter.isEqual(left, right)
+		return isEqual(left, right), nil
 	case token.MINUS:
-		return left.(float64) - right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) - right.(float64), nil
 	case token.PLUS:
 		leftNumValue, isLeftNumber := left.(float64)
 		rightNumValue, isRightNumber := right.(float64)
 		if isLeftNumber && isRightNumber {
-			return leftNumValue + rightNumValue
+			return leftNumValue + rightNumValue, nil
 		}
 
 		leftStringValue, isLeftString := left.(string)
 		rightStringValue, isRightString := right.(string)
 		if isLeftString && isRightString {
-			return leftStringValue + rightStringValue
+			return leftStringValue + rightStringValue, nil
 		}
 
-		break
+		return nil, loxerror.NewRuntimeError(expr.Operator, "Operands must be two numbers or two strings.")
 	case token.SLASH:
-		return left.(float64) / right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) / right.(float64), nil
 	case token.STAR:
-		return left.(float64) * right.(float64)
+		err := checkNumberOperands(expr.Operator, left, right)
+		if err != nil {
+			return nil, err
+		}
+		return left.(float64) * right.(float64), nil
 	}
 
 	// Unreachable
-	return nil
+	return nil, nil
 }
 
-func (interpreter *Interpreter) evaluate(expr ast.Expr) interface{} {
+func (interpreter *Interpreter) evaluate(expr ast.Expr) (interface{}, error) {
 	return expr.Accept(interpreter)
 }
 
-func (interpreter *Interpreter) isTruthy(object interface{}) bool {
+func isTruthy(object interface{}) bool {
 	if object == nil {
 		return false
 	}
@@ -88,7 +152,7 @@ func (interpreter *Interpreter) isTruthy(object interface{}) bool {
 	}
 }
 
-func (interpreter *Interpreter) isEqual(a interface{}, b interface{}) bool {
+func isEqual(a interface{}, b interface{}) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -97,4 +161,35 @@ func (interpreter *Interpreter) isEqual(a interface{}, b interface{}) bool {
 	}
 
 	return reflect.DeepEqual(a, b)
+}
+
+func checkNumberOperand(operator token.Token, operand interface{}) error {
+	if _, isNumber := operand.(float64); isNumber {
+		return nil
+	}
+
+	return loxerror.NewRuntimeError(operator, "Operand must be a number.")
+}
+
+func checkNumberOperands(operator token.Token, left interface{}, right interface{}) error {
+	_, isLeftNumber := left.(float64)
+	_, isRightNumber := right.(float64)
+
+	if isLeftNumber && isRightNumber {
+		return nil
+	}
+
+	return loxerror.NewRuntimeError(operator, "Operands must be numbers.")
+}
+
+func stringify(object interface{}) string {
+	if object == nil {
+		return "nil"
+	}
+
+	if number, isNumber := object.(float64); isNumber {
+		return strconv.FormatFloat(number, 'f', -1, 64)
+	}
+
+	return fmt.Sprintf("%v", object)
 }
