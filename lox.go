@@ -7,7 +7,7 @@ import (
 	"os"
 
 	_ "github.com/jordanwebster/golox/ast"
-	"github.com/jordanwebster/golox/error"
+	"github.com/jordanwebster/golox/loxerror"
 )
 
 //go:generate go run ./ast/cmd/gen.go
@@ -31,7 +31,7 @@ func runPrompt() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		run(line)
-		error.ClearError()
+		loxerror.ClearError()
 		fmt.Print("> ")
 	}
 }
@@ -43,7 +43,7 @@ func runFile(path string) {
 	}
 	run(string(source))
 
-	if error.HadError() {
+	if loxerror.HadError() {
 		os.Exit(65)
 	}
 }

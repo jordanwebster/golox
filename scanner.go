@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jordanwebster/golox/error"
+	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/token"
 )
 
@@ -129,7 +129,7 @@ func (scanner *Scanner) scanToken() {
 		} else if scanner.isAlpha(c) {
 			scanner.addIdentifier()
 		} else {
-			error.Error(scanner.line, fmt.Sprintf("Unexpected character: %s", c))
+			loxerror.Error(scanner.line, fmt.Sprintf("Unexpected character: %s", c))
 		}
 	}
 }
@@ -190,7 +190,7 @@ func (scanner *Scanner) addString() {
 	}
 
 	if scanner.isAtEnd() {
-		error.Error(scanner.line, "Unterminated string")
+		loxerror.Error(scanner.line, "Unterminated string")
 		return
 	}
 
@@ -220,7 +220,7 @@ func (scanner *Scanner) addNumber() {
 
 	number, err := strconv.ParseFloat(scanner.source[scanner.start:scanner.current], 64)
 	if err != nil {
-		error.Error(scanner.line, fmt.Sprintf("Unable to parse number to float: %s", scanner.source[scanner.start:scanner.current]))
+		loxerror.Error(scanner.line, fmt.Sprintf("Unable to parse number to float: %s", scanner.source[scanner.start:scanner.current]))
 		return
 	}
 	scanner.addTokenWithLiteral(token.NUMBER, number)

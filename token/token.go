@@ -54,6 +54,8 @@ const (
 	WHILE  = "WHILE"
 
 	EOF = "EOF"
+
+    ERROR = "ERROR"
 )
 
 type Token struct {
