@@ -6,29 +6,22 @@ import (
 	"github.com/jordanwebster/golox/token"
 )
 
-type ParseError struct {
-	message string
-}
-
-func (error *ParseError) Error() string {
-	return error.message
-}
-
 type Parser struct {
 	tokens  []token.Token
 	current int
 }
 
 func NewParser(tokens []token.Token) *Parser {
-    return &Parser{
-        tokens: tokens,
-        current: 0,
-    }
+	return &Parser{
+		tokens:  tokens,
+		current: 0,
+	}
 }
 
 func (parser *Parser) Parse() ast.Expr {
 	expr, err := parser.expression()
 	if err != nil {
+		loxerror.ReportError(err)
 		return nil
 	}
 
@@ -177,8 +170,8 @@ func (parser *Parser) primary() (ast.Expr, error) {
 		return &ast.GroupingExpr{Expression: expr}, nil
 	}
 
-	loxerror.ParseError(parser.peek(), "Expect expression")
-	return nil, &ParseError{message: "Expect expression"}
+	err := loxerror.NewParseError(parser.peek(), "Expect expression")
+	return nil, err
 }
 
 func (parser *Parser) synchronize() {
@@ -210,11 +203,7 @@ func (parser *Parser) consume(tokenType token.TokenType, errorMessage string) (t
 		return parser.advance(), nil
 	}
 
-	loxerror.ParseError(parser.peek(), errorMessage)
-
-	return token.Token{Type: token.ERROR, Lexeme: "", Literal: nil, Line: -1}, &ParseError{
-		message: errorMessage,
-	}
+	return token.Token{Type: token.ERROR, Lexeme: "", Literal: nil, Line: -1}, loxerror.NewParseError(parser.peek(), errorMessage)
 }
 
 func (parser *Parser) match(types ...token.TokenType) bool {

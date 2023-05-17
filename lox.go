@@ -63,9 +63,6 @@ func run(source string) {
     if loxerror.HadError() {
         return
     }
-    // TODO: 
-    // 1. Ensure parse is not swallowing errors
-    // 2. Make error module API consisent
 
     interpreter := interpreter.NewInterpreter()
     interpreter.Interpret(expr)

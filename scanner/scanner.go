@@ -35,6 +35,11 @@ type Scanner struct {
 	line    int
 }
 
+func reportSyntaxError(line int, message string) {
+	err := loxerror.NewSyntaxError(line, message)
+	loxerror.ReportError(err)
+}
+
 func NewScanner(source string) *Scanner {
 	return &Scanner{
 		source: source,
@@ -129,7 +134,7 @@ func (scanner *Scanner) scanToken() {
 		} else if scanner.isAlpha(c) {
 			scanner.addIdentifier()
 		} else {
-			loxerror.Error(scanner.line, fmt.Sprintf("Unexpected character: %s", c))
+			reportSyntaxError(scanner.line, fmt.Sprintf("Unexpected character: %s", c))
 		}
 	}
 }
@@ -190,7 +195,7 @@ func (scanner *Scanner) addString() {
 	}
 
 	if scanner.isAtEnd() {
-		loxerror.Error(scanner.line, "Unterminated string")
+		reportSyntaxError(scanner.line, "Unterminated string")
 		return
 	}
 
@@ -220,7 +225,7 @@ func (scanner *Scanner) addNumber() {
 
 	number, err := strconv.ParseFloat(scanner.source[scanner.start:scanner.current], 64)
 	if err != nil {
-		loxerror.Error(scanner.line, fmt.Sprintf("Unable to parse number to float: %s", scanner.source[scanner.start:scanner.current]))
+		reportSyntaxError(scanner.line, fmt.Sprintf("Unable to parse number to float: %s", scanner.source[scanner.start:scanner.current]))
 		return
 	}
 	scanner.addTokenWithLiteral(token.NUMBER, number)
