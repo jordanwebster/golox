@@ -18,18 +18,62 @@ func NewParser(tokens []token.Token) *Parser {
 	}
 }
 
-func (parser *Parser) Parse() ast.Expr {
-	expr, err := parser.expression()
-	if err != nil {
-		loxerror.ReportError(err)
-		return nil
+func (parser *Parser) Parse() []ast.Stmt {
+	var statements []ast.Stmt
+	for !parser.isAtEnd() {
+		stmt, err := parser.statement()
+		if err != nil {
+			loxerror.ReportError(err)
+			return nil
+		}
+		statements = append(statements, stmt)
 	}
 
-	return expr
+	return statements
 }
 
 func (parser *Parser) expression() (ast.Expr, error) {
 	return parser.equality()
+}
+
+func (parser *Parser) statement() (ast.Stmt, error) {
+	if parser.match(token.PRINT) {
+		return parser.printStatement()
+	} else {
+		return parser.expressionStatement()
+	}
+}
+
+func (parser *Parser) printStatement() (ast.Stmt, error) {
+	expr, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after value.")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.PrintStmt{
+		Expression: expr,
+	}, nil
+}
+
+func (parser *Parser) expressionStatement() (ast.Stmt, error) {
+    expr, err := parser.expression()
+    if err != nil {
+        return nil, err
+    }
+
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after expression.")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.ExprStmt{
+		Expression: expr,
+	}, nil
 }
 
 func (parser *Parser) equality() (ast.Expr, error) {

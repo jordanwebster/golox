@@ -16,17 +16,17 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (interpreter *Interpreter) Interpret(expr ast.Expr) {
-	value, err := interpreter.evaluate(expr)
-	if err != nil {
-		switch err.(type) {
-		case *loxerror.RuntimeError:
-			loxerror.ReportRuntimeError(err.(*loxerror.RuntimeError))
-		default:
-			panic(err)
+func (interpreter *Interpreter) Interpret(statements []ast.Stmt) {
+	for _, stmt := range statements {
+		err := interpreter.execute(stmt)
+		if err != nil {
+			switch err.(type) {
+			case *loxerror.RuntimeError:
+				loxerror.ReportRuntimeError(err.(*loxerror.RuntimeError))
+			default:
+				panic(err)
+			}
 		}
-	} else {
-		fmt.Println(stringify(value))
 	}
 }
 
@@ -137,8 +137,26 @@ func (interpreter *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) (interface
 	return nil, nil
 }
 
+func (interpreter *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) error {
+	_, err := interpreter.evaluate(stmt.Expression)
+	return err
+}
+
+func (interpreter *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) error {
+	value, err := interpreter.evaluate(stmt.Expression)
+	if err != nil {
+		return err
+	}
+	fmt.Println(stringify(value))
+	return nil
+}
+
 func (interpreter *Interpreter) evaluate(expr ast.Expr) (interface{}, error) {
 	return expr.Accept(interpreter)
+}
+
+func (interpreter *Interpreter) execute(stmt ast.Stmt) error {
+	return stmt.Accept(interpreter)
 }
 
 func isTruthy(object interface{}) bool {

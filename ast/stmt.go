@@ -1,7 +1,7 @@
 package ast
 
 type Stmt interface {
-	Accept(visitor StmtVisitor) (interface{}, error)
+	Accept(visitor StmtVisitor) error
 }
 
 type ExprStmt struct {

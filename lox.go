@@ -58,12 +58,12 @@ func run(source string) {
 	scanner := scanner.NewScanner(source)
 	tokens := scanner.ScanTokens()
 	parser := parser.NewParser(tokens)
-	expr := parser.Parse()
+	statements := parser.Parse()
 
 	if loxerror.HadError() {
 		return
 	}
 
 	interpreter := interpreter.NewInterpreter()
-	interpreter.Interpret(expr)
+	interpreter.Interpret(statements)
 }
