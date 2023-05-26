@@ -11,14 +11,14 @@ import (
 	"github.com/jordanwebster/golox/token"
 )
 
-type Interpreter struct{
-    environment *environment.Environment
+type Interpreter struct {
+	environment *environment.Environment
 }
 
 func NewInterpreter() *Interpreter {
 	return &Interpreter{
-        environment: environment.NewEnvironment(),
-    }
+		environment: environment.NewEnvironment(),
+	}
 }
 
 func (interpreter *Interpreter) Interpret(statements []ast.Stmt) {
@@ -143,7 +143,20 @@ func (interpreter *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) (interface
 }
 
 func (interpreter *Interpreter) VisitVariableExpr(expr *ast.VariableExpr) (interface{}, error) {
-    return interpreter.environment.Get(expr.Name)
+	return interpreter.environment.Get(expr.Name)
+}
+
+func (interpreter *Interpreter) VisitAssignExpr(expr *ast.AssignExpr) (interface{}, error) {
+	value, err := interpreter.evaluate(expr.Value)
+    if err != nil {
+        return nil, err
+    }
+
+	if err = interpreter.environment.Assign(expr.Name, value); err != nil {
+		return nil, err
+	} else {
+		return value, nil
+	}
 }
 
 func (interpreter *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) error {
@@ -161,17 +174,17 @@ func (interpreter *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) error {
 }
 
 func (interpreter *Interpreter) VisitVarStmt(stmt *ast.VarStmt) error {
-    var value interface{} = nil
-    var err error
-    if stmt.Initializer != nil {
-        value, err = interpreter.evaluate(stmt.Initializer)
-        if err != nil {
-            return err
-        }
-    }
-    
-    interpreter.environment.Define(stmt.Name.Lexeme, value)
-    return nil
+	var value interface{} = nil
+	var err error
+	if stmt.Initializer != nil {
+		value, err = interpreter.evaluate(stmt.Initializer)
+		if err != nil {
+			return err
+		}
+	}
+
+	interpreter.environment.Define(stmt.Name.Lexeme, value)
+	return nil
 }
 
 func (interpreter *Interpreter) evaluate(expr ast.Expr) (interface{}, error) {

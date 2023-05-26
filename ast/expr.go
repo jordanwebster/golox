@@ -28,3 +28,8 @@ type UnaryExpr struct {
 type VariableExpr struct {
 	Name token.Token
 }
+
+type AssignExpr struct {
+	Name  token.Token
+	Value Expr
+}

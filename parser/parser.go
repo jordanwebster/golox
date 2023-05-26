@@ -33,7 +33,7 @@ func (parser *Parser) Parse() []ast.Stmt {
 }
 
 func (parser *Parser) expression() (ast.Expr, error) {
-	return parser.equality()
+	return parser.assignment()
 }
 
 func (parser *Parser) statement() (ast.Stmt, error) {
@@ -116,6 +116,35 @@ func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 		Name:        name,
 		Initializer: initializer,
 	}, nil
+}
+
+func (parser *Parser) assignment() (ast.Expr, error) {
+    expr, err := parser.equality()
+    if err != nil {
+        return nil, err
+    }
+    
+    if parser.match(token.EQUAL) {
+        equals := parser.previous()
+        value, err := parser.assignment()
+        if err != nil {
+            return nil, err
+        }
+
+        switch v := expr.(type) {
+        case *ast.VariableExpr:
+            name := v.Name
+            return &ast.AssignExpr{
+                Name: name,
+                Value: value,
+            }, nil
+        }
+    
+        err = loxerror.NewSyntaxError(equals.Line, "Invalid assignment target.")
+        loxerror.ReportError(err)
+    }
+
+    return expr, nil
 }
 
 func (parser *Parser) equality() (ast.Expr, error) {

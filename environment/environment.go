@@ -12,9 +12,9 @@ type Environment struct {
 }
 
 func NewEnvironment() *Environment {
-    return &Environment{
-        values: make(map[string]interface{}),
-    }
+	return &Environment{
+		values: make(map[string]interface{}),
+	}
 }
 
 func (environment *Environment) Define(name string, value interface{}) {
@@ -27,4 +27,13 @@ func (environment *Environment) Get(name token.Token) (interface{}, error) {
 	}
 
 	return nil, loxerror.NewRuntimeError(name, fmt.Sprintf("Undefined variable '%s'.", name.Lexeme))
+}
+
+func (environment *Environment) Assign(name token.Token, value interface{}) error {
+	if _, isPresent := environment.values[name.Lexeme]; isPresent {
+		environment.values[name.Lexeme] = value
+		return nil
+	}
+
+	return loxerror.NewRuntimeError(name, fmt.Sprintf("Undefined variable '%s'.", name.Lexeme))
 }
