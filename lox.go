@@ -15,6 +15,8 @@ import (
 //go:generate go run ./ast/cmd/gen.go
 //go:generate go fmt ./ast
 
+var globalInterpreter *interpreter.Interpreter = interpreter.NewInterpreter()
+
 func main() {
 	switch numArgs := len(os.Args); numArgs {
 	case 1:
@@ -64,6 +66,5 @@ func run(source string) {
 		return
 	}
 
-	interpreter := interpreter.NewInterpreter()
-	interpreter.Interpret(statements)
+	globalInterpreter.Interpret(statements)
 }

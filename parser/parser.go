@@ -21,12 +21,12 @@ func NewParser(tokens []token.Token) *Parser {
 func (parser *Parser) Parse() []ast.Stmt {
 	var statements []ast.Stmt
 	for !parser.isAtEnd() {
-		stmt, err := parser.statement()
+		declaration, err := parser.declaration()
 		if err != nil {
 			loxerror.ReportError(err)
 			return nil
 		}
-		statements = append(statements, stmt)
+		statements = append(statements, declaration)
 	}
 
 	return statements
@@ -42,6 +42,23 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 	} else {
 		return parser.expressionStatement()
 	}
+}
+
+func (parser *Parser) declaration() (ast.Stmt, error) {
+	var err error
+	var stmt ast.Stmt
+	if parser.match(token.VAR) {
+		stmt, err = parser.varDeclaration()
+	} else {
+		stmt, err = parser.statement()
+	}
+
+	if err != nil {
+		parser.synchronize()
+		return nil, nil
+	}
+
+	return stmt, nil
 }
 
 func (parser *Parser) printStatement() (ast.Stmt, error) {
@@ -61,10 +78,10 @@ func (parser *Parser) printStatement() (ast.Stmt, error) {
 }
 
 func (parser *Parser) expressionStatement() (ast.Stmt, error) {
-    expr, err := parser.expression()
-    if err != nil {
-        return nil, err
-    }
+	expr, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = parser.consume(token.SEMICOLON, "Expect ';' after expression.")
 	if err != nil {
@@ -73,6 +90,31 @@ func (parser *Parser) expressionStatement() (ast.Stmt, error) {
 
 	return &ast.ExprStmt{
 		Expression: expr,
+	}, nil
+}
+
+func (parser *Parser) varDeclaration() (ast.Stmt, error) {
+	name, err := parser.consume(token.IDENTIFIER, "Expect variable name.")
+	if err != nil {
+		return nil, err
+	}
+
+	var initializer ast.Expr = nil
+	if parser.match(token.EQUAL) {
+		initializer, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after variable declaration.")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.VarStmt{
+		Name:        name,
+		Initializer: initializer,
 	}, nil
 }
 
@@ -198,6 +240,10 @@ func (parser *Parser) primary() (ast.Expr, error) {
 
 	if parser.match(token.NUMBER, token.STRING) {
 		return &ast.LiteralExpr{Value: parser.previous().Literal}, nil
+	}
+
+	if parser.match(token.IDENTIFIER) {
+		return &ast.VariableExpr{Name: parser.previous()}, nil
 	}
 
 	if parser.match(token.LEFT_PAREN) {

@@ -24,3 +24,7 @@ type UnaryExpr struct {
 	Operator token.Token
 	Right    Expr
 }
+
+type VariableExpr struct {
+	Name token.Token
+}

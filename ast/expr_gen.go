@@ -5,6 +5,7 @@ type ExprVisitor interface {
 	VisitGroupingExpr(expr *GroupingExpr) (interface{}, error)
 	VisitLiteralExpr(expr *LiteralExpr) (interface{}, error)
 	VisitUnaryExpr(expr *UnaryExpr) (interface{}, error)
+	VisitVariableExpr(expr *VariableExpr) (interface{}, error)
 }
 
 func (expr *BinaryExpr) Accept(visitor ExprVisitor) (interface{}, error) {
@@ -18,4 +19,7 @@ func (expr *LiteralExpr) Accept(visitor ExprVisitor) (interface{}, error) {
 }
 func (expr *UnaryExpr) Accept(visitor ExprVisitor) (interface{}, error) {
 	return visitor.VisitUnaryExpr(expr)
+}
+func (expr *VariableExpr) Accept(visitor ExprVisitor) (interface{}, error) {
+	return visitor.VisitVariableExpr(expr)
 }

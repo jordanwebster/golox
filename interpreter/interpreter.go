@@ -6,14 +6,19 @@ import (
 	"strconv"
 
 	"github.com/jordanwebster/golox/ast"
+	"github.com/jordanwebster/golox/environment"
 	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/token"
 )
 
-type Interpreter struct{}
+type Interpreter struct{
+    environment *environment.Environment
+}
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{}
+	return &Interpreter{
+        environment: environment.NewEnvironment(),
+    }
 }
 
 func (interpreter *Interpreter) Interpret(statements []ast.Stmt) {
@@ -137,6 +142,10 @@ func (interpreter *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) (interface
 	return nil, nil
 }
 
+func (interpreter *Interpreter) VisitVariableExpr(expr *ast.VariableExpr) (interface{}, error) {
+    return interpreter.environment.Get(expr.Name)
+}
+
 func (interpreter *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) error {
 	_, err := interpreter.evaluate(stmt.Expression)
 	return err
@@ -149,6 +158,20 @@ func (interpreter *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) error {
 	}
 	fmt.Println(stringify(value))
 	return nil
+}
+
+func (interpreter *Interpreter) VisitVarStmt(stmt *ast.VarStmt) error {
+    var value interface{} = nil
+    var err error
+    if stmt.Initializer != nil {
+        value, err = interpreter.evaluate(stmt.Initializer)
+        if err != nil {
+            return err
+        }
+    }
+    
+    interpreter.environment.Define(stmt.Name.Lexeme, value)
+    return nil
 }
 
 func (interpreter *Interpreter) evaluate(expr ast.Expr) (interface{}, error) {
