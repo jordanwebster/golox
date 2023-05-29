@@ -18,3 +18,7 @@ type VarStmt struct {
 	Name        token.Token
 	Initializer Expr
 }
+
+type BlockStmt struct {
+	Statements []Stmt
+}

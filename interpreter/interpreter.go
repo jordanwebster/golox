@@ -17,7 +17,7 @@ type Interpreter struct {
 
 func NewInterpreter() *Interpreter {
 	return &Interpreter{
-		environment: environment.NewEnvironment(),
+		environment: environment.NewGlobalEnvironment(),
 	}
 }
 
@@ -148,9 +148,9 @@ func (interpreter *Interpreter) VisitVariableExpr(expr *ast.VariableExpr) (inter
 
 func (interpreter *Interpreter) VisitAssignExpr(expr *ast.AssignExpr) (interface{}, error) {
 	value, err := interpreter.evaluate(expr.Value)
-    if err != nil {
-        return nil, err
-    }
+	if err != nil {
+		return nil, err
+	}
 
 	if err = interpreter.environment.Assign(expr.Name, value); err != nil {
 		return nil, err
@@ -173,6 +173,10 @@ func (interpreter *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) error {
 	return nil
 }
 
+func (interpreter *Interpreter) VisitBlockStmt(stmt *ast.BlockStmt) error {
+	return interpreter.executeBlock(stmt.Statements, environment.NewEnvironment(interpreter.environment))
+}
+
 func (interpreter *Interpreter) VisitVarStmt(stmt *ast.VarStmt) error {
 	var value interface{} = nil
 	var err error
@@ -193,6 +197,23 @@ func (interpreter *Interpreter) evaluate(expr ast.Expr) (interface{}, error) {
 
 func (interpreter *Interpreter) execute(stmt ast.Stmt) error {
 	return stmt.Accept(interpreter)
+}
+
+func (interpreter *Interpreter) executeBlock(statements []ast.Stmt, environment *environment.Environment) error {
+	previousEnvironment := interpreter.environment
+	interpreter.environment = environment
+	defer func() {
+		interpreter.environment = previousEnvironment
+	}()
+
+	for _, stmt := range statements {
+		err := interpreter.execute(stmt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func isTruthy(object interface{}) bool {
