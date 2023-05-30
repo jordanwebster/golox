@@ -22,3 +22,9 @@ type VarStmt struct {
 type BlockStmt struct {
 	Statements []Stmt
 }
+
+type IfStmt struct {
+	Condition  Expr
+	ThenBranch Stmt
+	ElseBranch Stmt
+}

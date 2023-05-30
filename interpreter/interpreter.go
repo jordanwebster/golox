@@ -159,6 +159,25 @@ func (interpreter *Interpreter) VisitAssignExpr(expr *ast.AssignExpr) (interface
 	}
 }
 
+func (interpreter *Interpreter) VisitLogicalExpr(expr *ast.LogicalExpr) (interface{}, error) {
+	left, err := interpreter.evaluate(expr.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	if expr.Operator.Type == token.OR {
+		if isTruthy(left) {
+			return left, nil
+		}
+	} else {
+		if !isTruthy(left) {
+			return left, nil
+		}
+	}
+
+	return interpreter.evaluate(expr.Right)
+}
+
 func (interpreter *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) error {
 	_, err := interpreter.evaluate(stmt.Expression)
 	return err
@@ -188,6 +207,21 @@ func (interpreter *Interpreter) VisitVarStmt(stmt *ast.VarStmt) error {
 	}
 
 	interpreter.environment.Define(stmt.Name.Lexeme, value)
+	return nil
+}
+
+func (interpreter *Interpreter) VisitIfStmt(stmt *ast.IfStmt) error {
+	condition, err := interpreter.evaluate(stmt.Condition)
+	if err != nil {
+		return err
+	}
+
+	if isTruthy(condition) {
+		return interpreter.execute(stmt.ThenBranch)
+	} else if stmt.ElseBranch != nil {
+		return interpreter.execute(stmt.ElseBranch)
+	}
+
 	return nil
 }
 

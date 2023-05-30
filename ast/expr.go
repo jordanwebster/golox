@@ -33,3 +33,9 @@ type AssignExpr struct {
 	Name  token.Token
 	Value Expr
 }
+
+type LogicalExpr struct {
+	Operator token.Token
+	Left     Expr
+	Right    Expr
+}

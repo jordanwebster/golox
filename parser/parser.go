@@ -37,7 +37,9 @@ func (parser *Parser) expression() (ast.Expr, error) {
 }
 
 func (parser *Parser) statement() (ast.Stmt, error) {
-	if parser.match(token.PRINT) {
+    if parser.match(token.IF) {
+        return parser.ifStatement()
+    } else if parser.match(token.PRINT) {
 		return parser.printStatement()
     } else if parser.match(token.LEFT_BRACE) {
         return parser.blockStatement()
@@ -61,6 +63,34 @@ func (parser *Parser) declaration() (ast.Stmt, error) {
 	}
 
 	return stmt, nil
+}
+
+func (parser *Parser) ifStatement() (ast.Stmt, error) {
+    parser.consume(token.LEFT_PAREN, "Expect '(' after if.")
+    condition, err := parser.expression()
+    if err != nil {
+        return nil, err
+    }
+    parser.consume(token.RIGHT_PAREN, "Expect ')' after if.")
+
+    thenBranch, err := parser.statement()
+    if err != nil {
+        return nil, err
+    }
+
+    var elseBranch ast.Stmt = nil
+    if parser.match(token.ELSE) {
+        elseBranch, err = parser.statement()
+        if err != nil {
+            return nil, err
+        }
+    }
+    
+    return &ast.IfStmt{
+        Condition: condition,
+        ThenBranch: thenBranch,
+        ElseBranch: elseBranch,
+    }, nil
 }
 
 func (parser *Parser) printStatement() (ast.Stmt, error) {
@@ -139,7 +169,7 @@ func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 }
 
 func (parser *Parser) assignment() (ast.Expr, error) {
-    expr, err := parser.equality()
+    expr, err := parser.or()
     if err != nil {
         return nil, err
     }
@@ -162,6 +192,52 @@ func (parser *Parser) assignment() (ast.Expr, error) {
     
         err = loxerror.NewSyntaxError(equals.Line, "Invalid assignment target.")
         loxerror.ReportError(err)
+    }
+
+    return expr, nil
+}
+
+func (parser *Parser) or() (ast.Expr, error) {
+    expr, err := parser.and()
+    if err != nil {
+        return nil, err
+    }
+
+    for parser.match(token.OR) {
+        operator := parser.previous()
+        right, err := parser.and()
+        if err != nil {
+            return nil, err
+        }
+
+        expr = &ast.LogicalExpr{
+            Operator: operator,
+            Left: expr,
+            Right: right,
+        }
+    }
+
+    return expr, nil
+}
+
+func (parser *Parser) and() (ast.Expr, error) {
+    expr, err := parser.equality()
+    if err != nil {
+        return nil, err
+    }
+
+    for parser.match(token.AND) {
+        operator := parser.previous()
+        right, err := parser.equality()
+        if err != nil {
+            return nil, err
+        }
+
+        expr = &ast.LogicalExpr{
+            Operator: operator,
+            Left: expr,
+            Right: right,
+        }
     }
 
     return expr, nil
