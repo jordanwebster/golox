@@ -28,3 +28,8 @@ type IfStmt struct {
 	ThenBranch Stmt
 	ElseBranch Stmt
 }
+
+type WhileStmt struct {
+	Condition Expr
+	Body      Stmt
+}

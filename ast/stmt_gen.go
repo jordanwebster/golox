@@ -6,6 +6,7 @@ type StmtVisitor interface {
 	VisitVarStmt(stmt *VarStmt) error
 	VisitBlockStmt(stmt *BlockStmt) error
 	VisitIfStmt(stmt *IfStmt) error
+	VisitWhileStmt(stmt *WhileStmt) error
 }
 
 func (stmt *ExprStmt) Accept(visitor StmtVisitor) error {
@@ -22,4 +23,7 @@ func (stmt *BlockStmt) Accept(visitor StmtVisitor) error {
 }
 func (stmt *IfStmt) Accept(visitor StmtVisitor) error {
 	return visitor.VisitIfStmt(stmt)
+}
+func (stmt *WhileStmt) Accept(visitor StmtVisitor) error {
+	return visitor.VisitWhileStmt(stmt)
 }

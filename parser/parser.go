@@ -37,12 +37,16 @@ func (parser *Parser) expression() (ast.Expr, error) {
 }
 
 func (parser *Parser) statement() (ast.Stmt, error) {
-    if parser.match(token.IF) {
-        return parser.ifStatement()
-    } else if parser.match(token.PRINT) {
+	if parser.match(token.FOR) {
+		return parser.forStatement()
+	} else if parser.match(token.IF) {
+		return parser.ifStatement()
+	} else if parser.match(token.PRINT) {
 		return parser.printStatement()
-    } else if parser.match(token.LEFT_BRACE) {
-        return parser.blockStatement()
+	} else if parser.match(token.WHILE) {
+		return parser.whileStatement()
+	} else if parser.match(token.LEFT_BRACE) {
+		return parser.blockStatement()
 	} else {
 		return parser.expressionStatement()
 	}
@@ -66,31 +70,31 @@ func (parser *Parser) declaration() (ast.Stmt, error) {
 }
 
 func (parser *Parser) ifStatement() (ast.Stmt, error) {
-    parser.consume(token.LEFT_PAREN, "Expect '(' after if.")
-    condition, err := parser.expression()
-    if err != nil {
-        return nil, err
-    }
-    parser.consume(token.RIGHT_PAREN, "Expect ')' after if.")
+	parser.consume(token.LEFT_PAREN, "Expect '(' after if.")
+	condition, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+	parser.consume(token.RIGHT_PAREN, "Expect ')' after if.")
 
-    thenBranch, err := parser.statement()
-    if err != nil {
-        return nil, err
-    }
+	thenBranch, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
 
-    var elseBranch ast.Stmt = nil
-    if parser.match(token.ELSE) {
-        elseBranch, err = parser.statement()
-        if err != nil {
-            return nil, err
-        }
-    }
-    
-    return &ast.IfStmt{
-        Condition: condition,
-        ThenBranch: thenBranch,
-        ElseBranch: elseBranch,
-    }, nil
+	var elseBranch ast.Stmt = nil
+	if parser.match(token.ELSE) {
+		elseBranch, err = parser.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &ast.IfStmt{
+		Condition:  condition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}, nil
 }
 
 func (parser *Parser) printStatement() (ast.Stmt, error) {
@@ -109,22 +113,132 @@ func (parser *Parser) printStatement() (ast.Stmt, error) {
 	}, nil
 }
 
+func (parser *Parser) forStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after 'for'.")
+	if err != nil {
+		return nil, err
+	}
+
+	var initializer ast.Stmt = nil
+	if parser.match(token.SEMICOLON) {
+		initializer = nil
+	} else if parser.match(token.VAR) {
+		initializer, err = parser.varDeclaration()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		initializer, err = parser.expressionStatement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var condition ast.Expr = nil
+	if !parser.check(token.SEMICOLON) {
+		condition, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after loop condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	var increment ast.Expr = nil
+	if !parser.check(token.RIGHT_PAREN) {
+		increment, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after for clauses.")
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	if increment != nil {
+		body = &ast.BlockStmt{
+			Statements: []ast.Stmt{
+				body,
+				&ast.ExprStmt{
+					Expression: increment,
+				},
+			},
+		}
+	}
+
+	if condition == nil {
+		// Ensure that we loop infinitely in the case of a missing condition
+		condition = &ast.LiteralExpr{Value: true}
+	}
+
+	body = &ast.WhileStmt{
+		Condition: condition,
+		Body:      body,
+	}
+
+	if initializer != nil {
+		body = &ast.BlockStmt{
+			Statements: []ast.Stmt{
+				initializer,
+				body,
+			},
+		}
+	}
+
+	return body, nil
+}
+
+func (parser *Parser) whileStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after 'while'.")
+	if err != nil {
+		return nil, err
+	}
+
+	condition, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after 'while'.")
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.WhileStmt{
+		Condition: condition,
+		Body:      body,
+	}, nil
+}
+
 func (parser *Parser) blockStatement() (ast.Stmt, error) {
-    statements := make([]ast.Stmt, 0, 8)
-    
-    for !parser.check(token.RIGHT_BRACE) && !parser.isAtEnd() {
-        declaration, err := parser.declaration()
-        if err != nil {
-            return nil, err
-        }
+	statements := make([]ast.Stmt, 0, 8)
 
-        statements = append(statements, declaration)
-        parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
-    }
+	for !parser.check(token.RIGHT_BRACE) && !parser.isAtEnd() {
+		declaration, err := parser.declaration()
+		if err != nil {
+			return nil, err
+		}
 
-    return &ast.BlockStmt{
-        Statements: statements,
-    }, nil
+		statements = append(statements, declaration)
+		parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
+	}
+
+	return &ast.BlockStmt{
+		Statements: statements,
+	}, nil
 }
 
 func (parser *Parser) expressionStatement() (ast.Stmt, error) {
@@ -169,78 +283,78 @@ func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 }
 
 func (parser *Parser) assignment() (ast.Expr, error) {
-    expr, err := parser.or()
-    if err != nil {
-        return nil, err
-    }
-    
-    if parser.match(token.EQUAL) {
-        equals := parser.previous()
-        value, err := parser.assignment()
-        if err != nil {
-            return nil, err
-        }
+	expr, err := parser.or()
+	if err != nil {
+		return nil, err
+	}
 
-        switch v := expr.(type) {
-        case *ast.VariableExpr:
-            name := v.Name
-            return &ast.AssignExpr{
-                Name: name,
-                Value: value,
-            }, nil
-        }
-    
-        err = loxerror.NewSyntaxError(equals.Line, "Invalid assignment target.")
-        loxerror.ReportError(err)
-    }
+	if parser.match(token.EQUAL) {
+		equals := parser.previous()
+		value, err := parser.assignment()
+		if err != nil {
+			return nil, err
+		}
 
-    return expr, nil
+		switch v := expr.(type) {
+		case *ast.VariableExpr:
+			name := v.Name
+			return &ast.AssignExpr{
+				Name:  name,
+				Value: value,
+			}, nil
+		}
+
+		err = loxerror.NewSyntaxError(equals.Line, "Invalid assignment target.")
+		loxerror.ReportError(err)
+	}
+
+	return expr, nil
 }
 
 func (parser *Parser) or() (ast.Expr, error) {
-    expr, err := parser.and()
-    if err != nil {
-        return nil, err
-    }
+	expr, err := parser.and()
+	if err != nil {
+		return nil, err
+	}
 
-    for parser.match(token.OR) {
-        operator := parser.previous()
-        right, err := parser.and()
-        if err != nil {
-            return nil, err
-        }
+	for parser.match(token.OR) {
+		operator := parser.previous()
+		right, err := parser.and()
+		if err != nil {
+			return nil, err
+		}
 
-        expr = &ast.LogicalExpr{
-            Operator: operator,
-            Left: expr,
-            Right: right,
-        }
-    }
+		expr = &ast.LogicalExpr{
+			Operator: operator,
+			Left:     expr,
+			Right:    right,
+		}
+	}
 
-    return expr, nil
+	return expr, nil
 }
 
 func (parser *Parser) and() (ast.Expr, error) {
-    expr, err := parser.equality()
-    if err != nil {
-        return nil, err
-    }
+	expr, err := parser.equality()
+	if err != nil {
+		return nil, err
+	}
 
-    for parser.match(token.AND) {
-        operator := parser.previous()
-        right, err := parser.equality()
-        if err != nil {
-            return nil, err
-        }
+	for parser.match(token.AND) {
+		operator := parser.previous()
+		right, err := parser.equality()
+		if err != nil {
+			return nil, err
+		}
 
-        expr = &ast.LogicalExpr{
-            Operator: operator,
-            Left: expr,
-            Right: right,
-        }
-    }
+		expr = &ast.LogicalExpr{
+			Operator: operator,
+			Left:     expr,
+			Right:    right,
+		}
+	}
 
-    return expr, nil
+	return expr, nil
 }
 
 func (parser *Parser) equality() (ast.Expr, error) {

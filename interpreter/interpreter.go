@@ -192,6 +192,26 @@ func (interpreter *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) error {
 	return nil
 }
 
+func (interpreter *Interpreter) VisitWhileStmt(stmt *ast.WhileStmt) error {
+	for {
+		shouldExecute, err := interpreter.evaluate(stmt.Condition)
+		if err != nil {
+			return err
+		}
+
+		if isTruthy(shouldExecute) {
+			err = interpreter.execute(stmt.Body)
+			if err != nil {
+				return err
+			}
+		} else {
+			break
+		}
+	}
+
+	return nil
+}
+
 func (interpreter *Interpreter) VisitBlockStmt(stmt *ast.BlockStmt) error {
 	return interpreter.executeBlock(stmt.Statements, environment.NewEnvironment(interpreter.environment))
 }
