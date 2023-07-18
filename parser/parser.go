@@ -21,12 +21,10 @@ func NewParser(tokens []token.Token) *Parser {
 func (parser *Parser) Parse() []ast.Stmt {
 	var statements []ast.Stmt
 	for !parser.isAtEnd() {
-		declaration, err := parser.declaration()
-		if err != nil {
-			loxerror.ReportError(err)
-			return nil
+		declaration := parser.declaration()
+		if declaration != nil {
+			statements = append(statements, declaration)
 		}
-		statements = append(statements, declaration)
 	}
 
 	return statements
@@ -52,7 +50,7 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 	}
 }
 
-func (parser *Parser) declaration() (ast.Stmt, error) {
+func (parser *Parser) declaration() ast.Stmt {
 	var err error
 	var stmt ast.Stmt
 	if parser.match(token.VAR) {
@@ -62,11 +60,17 @@ func (parser *Parser) declaration() (ast.Stmt, error) {
 	}
 
 	if err != nil {
-		parser.synchronize()
-		return nil, nil
+		switch err.(type) {
+		case *loxerror.ParseError:
+			loxerror.ReportError(err)
+			parser.synchronize()
+			return nil
+		default:
+			panic(err)
+		}
 	}
 
-	return stmt, nil
+	return stmt
 }
 
 func (parser *Parser) ifStatement() (ast.Stmt, error) {
@@ -227,12 +231,10 @@ func (parser *Parser) blockStatement() (ast.Stmt, error) {
 	statements := make([]ast.Stmt, 0, 8)
 
 	for !parser.check(token.RIGHT_BRACE) && !parser.isAtEnd() {
-		declaration, err := parser.declaration()
-		if err != nil {
-			return nil, err
+		declaration := parser.declaration()
+		if declaration != nil {
+			statements = append(statements, declaration)
 		}
-
-		statements = append(statements, declaration)
 		parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
 	}
 
@@ -304,7 +306,7 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 			}, nil
 		}
 
-		err = loxerror.NewSyntaxError(equals.Line, "Invalid assignment target.")
+		err = loxerror.NewParseError(equals, "Invalid assignment target.")
 		loxerror.ReportError(err)
 	}
 
