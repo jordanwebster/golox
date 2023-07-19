@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/interpreter"
 	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/parser"
 	"github.com/jordanwebster/golox/scanner"
+	"github.com/jordanwebster/golox/token"
 )
 
 //go:generate go run ./ast/cmd/gen.go
@@ -58,12 +60,18 @@ func runFile(path string) {
 }
 
 func run(source string) {
-	scanner := scanner.NewScanner(source)
-	tokens := scanner.ScanTokens()
+	reader := strings.NewReader(source)
+	tokens_channel := make(chan token.Token)
+	scanner := scanner.NewScanner(reader, tokens_channel)
+	go scanner.ScanTokens()
+	tokens := make([]token.Token, 0, 64)
+	for token := range tokens_channel {
+		tokens = append(tokens, token)
+	}
 
-	statements_channel := make(chan ast.Stmt) 
+	statements_channel := make(chan ast.Stmt)
 	parser := parser.NewParser(tokens, statements_channel)
-    go parser.Parse()
+	go parser.Parse()
 
 	statements := make([]ast.Stmt, 0, 64)
 	for stmt := range statements_channel {

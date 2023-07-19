@@ -1,7 +1,9 @@
 package scanner
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/jordanwebster/golox/loxerror"
@@ -28,10 +30,9 @@ var keywords map[string]token.TokenType = map[string]token.TokenType{
 }
 
 type Scanner struct {
-	source  string
-	tokens  []token.Token
-	start   int
-	current int
+	reader  *bufio.Reader
+	tokens  chan token.Token
+	current []byte
 	line    int
 }
 
@@ -40,26 +41,32 @@ func reportSyntaxError(line int, message string) {
 	loxerror.ReportError(err)
 }
 
-func NewScanner(source string) *Scanner {
+func NewScanner(source io.Reader, tokens chan token.Token) *Scanner {
+	reader := bufio.NewReader(source)
 	return &Scanner{
-		source: source,
-		tokens: make([]token.Token, 0, 256),
+		reader: reader,
+		tokens: tokens,
 		line:   1,
 	}
 }
 
-func (scanner *Scanner) ScanTokens() []token.Token {
+func (scanner *Scanner) ScanTokens() {
 	for !scanner.isAtEnd() {
-		scanner.start = scanner.current
+		scanner.current = make([]byte, 0, 4)
 		scanner.scanToken()
 	}
 
-	scanner.tokens = append(scanner.tokens, token.Token{token.EOF, "", nil, scanner.line})
-	return scanner.tokens
+	scanner.tokens <- token.Token{Type: token.EOF, Lexeme: "", Literal: nil, Line: scanner.line}
+    close(scanner.tokens)
 }
 
 func (scanner *Scanner) isAtEnd() bool {
-	return scanner.current >= len(scanner.source)
+	bytes, err := scanner.reader.Peek(1)
+	if len(bytes) == 0 && err == io.EOF {
+		return true
+	}
+
+	return false
 }
 
 func (scanner *Scanner) scanToken() {
@@ -140,37 +147,36 @@ func (scanner *Scanner) scanToken() {
 }
 
 func (scanner *Scanner) advance() byte {
-	c := scanner.source[scanner.current]
-	scanner.current += 1
-	return c
+	byte, _ := scanner.reader.ReadByte()
+	scanner.current = append(scanner.current, byte)
+	return byte
 }
 
 func (scanner *Scanner) match(expected byte) bool {
-	if scanner.isAtEnd() {
-		return false
-	}
-	if scanner.source[scanner.current] != expected {
+	if scanner.peek() != expected {
 		return false
 	}
 
-	scanner.current += 1
+	scanner.reader.ReadByte()
 	return true
 }
 
 func (scanner *Scanner) peek() byte {
-	if scanner.isAtEnd() {
+	bytes, _ := scanner.reader.Peek(1)
+	if len(bytes) < 1 {
 		return 0
-	} else {
-		return scanner.source[scanner.current]
 	}
+
+	return bytes[0]
 }
 
 func (scanner *Scanner) peekNext() byte {
-	if scanner.current+1 >= len(scanner.source) {
+	bytes, _ := scanner.reader.Peek(2)
+	if len(bytes) < 2 {
 		return 0
 	}
 
-	return scanner.source[scanner.current+1]
+	return bytes[1]
 }
 
 func (scanner *Scanner) addToken(tokenType token.TokenType) {
@@ -178,12 +184,13 @@ func (scanner *Scanner) addToken(tokenType token.TokenType) {
 }
 
 func (scanner *Scanner) addTokenWithLiteral(tokenType token.TokenType, literal interface{}) {
-	scanner.tokens = append(scanner.tokens, token.Token{
+    token := token.Token{
 		Type:    tokenType,
-		Lexeme:  scanner.source[scanner.start:scanner.current],
+		Lexeme:  string(scanner.current),
 		Literal: literal,
 		Line:    scanner.line,
-	})
+	}
+    scanner.tokens <- token
 }
 
 func (scanner *Scanner) addString() {
@@ -202,7 +209,7 @@ func (scanner *Scanner) addString() {
 	// Consume the closing '"'
 	scanner.advance()
 
-	value := scanner.source[scanner.start+1 : scanner.current-1]
+	value := string(scanner.current[1 : len(scanner.current)-1])
 	scanner.addTokenWithLiteral(token.STRING, value)
 }
 func (scanner *Scanner) isDigit(c byte) bool {
@@ -223,9 +230,9 @@ func (scanner *Scanner) addNumber() {
 		}
 	}
 
-	number, err := strconv.ParseFloat(scanner.source[scanner.start:scanner.current], 64)
+	number, err := strconv.ParseFloat(string(scanner.current), 64)
 	if err != nil {
-		reportSyntaxError(scanner.line, fmt.Sprintf("Unable to parse number to float: %s", scanner.source[scanner.start:scanner.current]))
+		reportSyntaxError(scanner.line, fmt.Sprintf("Unable to parse number to float: %s", string(scanner.current)))
 		return
 	}
 	scanner.addTokenWithLiteral(token.NUMBER, number)
@@ -236,7 +243,7 @@ func (scanner *Scanner) addIdentifier() {
 		scanner.advance()
 	}
 
-	text := scanner.source[scanner.start:scanner.current]
+	text := string(scanner.current)
 	tokenType, isKeyword := keywords[text]
 	if !isKeyword {
 		tokenType = token.IDENTIFIER
