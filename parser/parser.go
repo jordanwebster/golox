@@ -7,27 +7,28 @@ import (
 )
 
 type Parser struct {
-	tokens  []token.Token
-	current int
+	tokens     []token.Token
+	statements chan ast.Stmt
+	current    int
 }
 
-func NewParser(tokens []token.Token) *Parser {
+func NewParser(tokens []token.Token, statements chan ast.Stmt) *Parser {
 	return &Parser{
-		tokens:  tokens,
-		current: 0,
+		tokens:     tokens,
+		statements: statements,
+		current:    0,
 	}
 }
 
-func (parser *Parser) Parse() []ast.Stmt {
-	var statements []ast.Stmt
+func (parser *Parser) Parse() {
 	for !parser.isAtEnd() {
 		declaration := parser.declaration()
 		if declaration != nil {
-			statements = append(statements, declaration)
+			parser.statements <- declaration
 		}
 	}
 
-	return statements
+    close(parser.statements)
 }
 
 func (parser *Parser) expression() (ast.Expr, error) {

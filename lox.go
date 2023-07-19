@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/interpreter"
 	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/parser"
@@ -59,8 +60,15 @@ func runFile(path string) {
 func run(source string) {
 	scanner := scanner.NewScanner(source)
 	tokens := scanner.ScanTokens()
-	parser := parser.NewParser(tokens)
-	statements := parser.Parse()
+
+	statements_channel := make(chan ast.Stmt) 
+	parser := parser.NewParser(tokens, statements_channel)
+    go parser.Parse()
+
+	statements := make([]ast.Stmt, 0, 64)
+	for stmt := range statements_channel {
+		statements = append(statements, stmt)
+	}
 
 	if loxerror.HadError() {
 		return
