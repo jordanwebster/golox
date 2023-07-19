@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/interpreter"
 	"github.com/jordanwebster/golox/loxerror"
+	"github.com/jordanwebster/golox/loxio"
 	"github.com/jordanwebster/golox/parser"
 	"github.com/jordanwebster/golox/scanner"
 	"github.com/jordanwebster/golox/token"
@@ -60,10 +60,15 @@ func runFile(path string) {
 }
 
 func run(source string) {
-	reader := strings.NewReader(source)
+    read_writer := loxio.NewChannelReadWriter()
+
 	tokens_channel := make(chan token.Token)
-	scanner := scanner.NewScanner(reader, tokens_channel)
+	scanner := scanner.NewScanner(read_writer, tokens_channel)
 	go scanner.ScanTokens()
+
+    read_writer.Write([]byte(source))
+    read_writer.Close()
+
 	tokens := make([]token.Token, 0, 64)
 	for token := range tokens_channel {
 		tokens = append(tokens, token)
