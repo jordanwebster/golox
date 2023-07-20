@@ -9,8 +9,8 @@ import (
 type Parser struct {
 	tokens     chan token.Token
 	statements chan ast.Stmt
-	current    token.Token
-	prev       token.Token
+	next       *token.Token
+	prev       *token.Token
 }
 
 func NewParser(tokens chan token.Token, statements chan ast.Stmt) *Parser {
@@ -21,8 +21,6 @@ func NewParser(tokens chan token.Token, statements chan ast.Stmt) *Parser {
 }
 
 func (parser *Parser) Parse() {
-	parser.current = <-parser.tokens
-
 	for !parser.isAtEnd() {
 		declaration := parser.declaration()
 		if declaration != nil {
@@ -561,8 +559,8 @@ func (parser *Parser) check(tokenType token.TokenType) bool {
 
 func (parser *Parser) advance() token.Token {
 	if !parser.isAtEnd() {
-		parser.prev = parser.current
-		parser.current = <-parser.tokens
+		parser.prev = parser.next
+		parser.next = nil
 	}
 
 	return parser.previous()
@@ -573,9 +571,14 @@ func (parser *Parser) isAtEnd() bool {
 }
 
 func (parser *Parser) peek() token.Token {
-	return parser.current
+	if parser.next == nil {
+		token := <-parser.tokens
+		parser.next = &token
+	}
+
+	return *parser.next
 }
 
 func (parser *Parser) previous() token.Token {
-	return parser.prev
+	return *parser.prev
 }
