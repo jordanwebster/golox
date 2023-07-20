@@ -7,20 +7,22 @@ import (
 )
 
 type Parser struct {
-	tokens     []token.Token
+	tokens     chan token.Token
 	statements chan ast.Stmt
-	current    int
+	current    token.Token
+	prev       token.Token
 }
 
-func NewParser(tokens []token.Token, statements chan ast.Stmt) *Parser {
+func NewParser(tokens chan token.Token, statements chan ast.Stmt) *Parser {
 	return &Parser{
 		tokens:     tokens,
 		statements: statements,
-		current:    0,
 	}
 }
 
 func (parser *Parser) Parse() {
+    parser.current = <- parser.tokens
+
 	for !parser.isAtEnd() {
 		declaration := parser.declaration()
 		if declaration != nil {
@@ -28,7 +30,7 @@ func (parser *Parser) Parse() {
 		}
 	}
 
-    close(parser.statements)
+	close(parser.statements)
 }
 
 func (parser *Parser) expression() (ast.Expr, error) {
@@ -559,7 +561,8 @@ func (parser *Parser) check(tokenType token.TokenType) bool {
 
 func (parser *Parser) advance() token.Token {
 	if !parser.isAtEnd() {
-		parser.current += 1
+        parser.prev = parser.current
+        parser.current = <- parser.tokens
 	}
 
 	return parser.previous()
@@ -570,9 +573,9 @@ func (parser *Parser) isAtEnd() bool {
 }
 
 func (parser *Parser) peek() token.Token {
-	return parser.tokens[parser.current]
+    return parser.current
 }
 
 func (parser *Parser) previous() token.Token {
-	return parser.tokens[parser.current-1]
+    return parser.prev
 }

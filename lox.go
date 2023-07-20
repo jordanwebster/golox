@@ -62,17 +62,12 @@ func runFile(path string) {
 func run(source string) {
     read_writer := loxio.NewChannelReadWriter()
 
-	tokens_channel := make(chan token.Token)
-	scanner := scanner.NewScanner(read_writer, tokens_channel)
+	tokens := make(chan token.Token)
+	scanner := scanner.NewScanner(read_writer, tokens)
 	go scanner.ScanTokens()
 
     read_writer.Write([]byte(source))
     read_writer.Close()
-
-	tokens := make([]token.Token, 0, 64)
-	for token := range tokens_channel {
-		tokens = append(tokens, token)
-	}
 
 	statements_channel := make(chan ast.Stmt)
 	parser := parser.NewParser(tokens, statements_channel)
