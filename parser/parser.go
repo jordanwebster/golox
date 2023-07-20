@@ -88,7 +88,7 @@ func (parser *Parser) ifStatement() (ast.Stmt, error) {
 	}
 
 	var elseBranch ast.Stmt = nil
-	if parser.match(token.ELSE) {
+	if parser.matchNoWait(token.ELSE) {
 		elseBranch, err = parser.statement()
 		if err != nil {
 			return nil, err
@@ -548,6 +548,25 @@ func (parser *Parser) match(types ...token.TokenType) bool {
 	}
 
 	return false
+}
+
+// A non-blocking version of wait that allows the REPL to eagerly execute an
+// if block without waiting for another token to check if there is an else block.
+// Users of the REPL are forced to place the else on the same line as the closing
+// brace.
+func (parser *Parser) matchNoWait(tokenType token.TokenType) bool {
+	if parser.next != nil {
+		return parser.match(tokenType)
+	}
+
+	select {
+	case token := <-parser.tokens:
+		parser.next = &token
+	default:
+		return false
+	}
+
+	return parser.match(tokenType)
 }
 
 func (parser *Parser) check(tokenType token.TokenType) bool {
