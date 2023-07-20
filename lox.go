@@ -46,11 +46,7 @@ func runPrompt() {
 	go parser.Parse()
 
 	for stmt := range statements {
-		if !loxerror.HadError() {
-			globalInterpreter.Interpret([]ast.Stmt{stmt})
-		} else {
-			loxerror.ClearError()
-		}
+		globalInterpreter.Interpret([]ast.Stmt{stmt})
 	}
 
 }
