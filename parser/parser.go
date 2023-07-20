@@ -236,8 +236,9 @@ func (parser *Parser) blockStatement() (ast.Stmt, error) {
 		if declaration != nil {
 			statements = append(statements, declaration)
 		}
-		parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
 	}
+
+	parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
 
 	return &ast.BlockStmt{
 		Statements: statements,
