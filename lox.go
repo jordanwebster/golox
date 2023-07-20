@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/interpreter"
@@ -33,14 +34,37 @@ func main() {
 }
 
 func runPrompt() {
-	scanner := bufio.NewScanner(os.Stdin)
+	read_writer := loxio.NewChannelReadWriter()
+	go readLines(read_writer)
+
+	tokens := make(chan token.Token)
+	scanner := scanner.NewScanner(read_writer, tokens)
+	go scanner.ScanTokens()
+
+	statements := make(chan ast.Stmt)
+	parser := parser.NewParser(tokens, statements)
+	go parser.Parse()
+
+	for stmt := range statements {
+		if !loxerror.HadError() {
+			globalInterpreter.Interpret([]ast.Stmt{stmt})
+		} else {
+			loxerror.ClearError()
+		}
+	}
+
+}
+
+func readLines(writer *loxio.ChannelReadWriter) {
+	line_scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("> ")
-	for scanner.Scan() {
-		line := scanner.Text()
-		run(line)
-		loxerror.ClearError()
+	for line_scanner.Scan() {
+		line := line_scanner.Bytes()
+		writer.Write(line)
 		fmt.Print("> ")
 	}
+
+	writer.Close()
 }
 
 func runFile(path string) {
@@ -48,39 +72,27 @@ func runFile(path string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	run(string(source))
+
+	tokens := make(chan token.Token)
+	scanner := scanner.NewScanner(strings.NewReader(string(source)), tokens)
+	go scanner.ScanTokens()
+
+	statements := make(chan ast.Stmt)
+	parser := parser.NewParser(tokens, statements)
+	go parser.Parse()
+
+	stmts := make([]ast.Stmt, 0, 64)
+	for stmt := range statements {
+		stmts = append(stmts, stmt)
+	}
 
 	if loxerror.HadError() {
 		os.Exit(65)
 	}
 
+	globalInterpreter.Interpret(stmts)
+
 	if loxerror.HadRuntimeError() {
 		os.Exit(70)
 	}
-}
-
-func run(source string) {
-    read_writer := loxio.NewChannelReadWriter()
-
-	tokens := make(chan token.Token)
-	scanner := scanner.NewScanner(read_writer, tokens)
-	go scanner.ScanTokens()
-
-    read_writer.Write([]byte(source))
-    read_writer.Close()
-
-	statements_channel := make(chan ast.Stmt)
-	parser := parser.NewParser(tokens, statements_channel)
-	go parser.Parse()
-
-	statements := make([]ast.Stmt, 0, 64)
-	for stmt := range statements_channel {
-		statements = append(statements, stmt)
-	}
-
-	if loxerror.HadError() {
-		return
-	}
-
-	globalInterpreter.Interpret(statements)
 }
