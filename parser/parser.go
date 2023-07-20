@@ -21,7 +21,7 @@ func NewParser(tokens chan token.Token, statements chan ast.Stmt) *Parser {
 }
 
 func (parser *Parser) Parse() {
-    parser.current = <- parser.tokens
+	parser.current = <-parser.tokens
 
 	for !parser.isAtEnd() {
 		declaration := parser.declaration()
@@ -561,8 +561,8 @@ func (parser *Parser) check(tokenType token.TokenType) bool {
 
 func (parser *Parser) advance() token.Token {
 	if !parser.isAtEnd() {
-        parser.prev = parser.current
-        parser.current = <- parser.tokens
+		parser.prev = parser.current
+		parser.current = <-parser.tokens
 	}
 
 	return parser.previous()
@@ -573,9 +573,9 @@ func (parser *Parser) isAtEnd() bool {
 }
 
 func (parser *Parser) peek() token.Token {
-    return parser.current
+	return parser.current
 }
 
 func (parser *Parser) previous() token.Token {
-    return parser.prev
+	return parser.prev
 }

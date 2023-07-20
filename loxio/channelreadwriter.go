@@ -1,6 +1,12 @@
 package loxio
 
-import "bytes"
+import (
+	"bytes"
+	"errors"
+	"io"
+)
+
+var Waiting = errors.New("Waiting")
 
 type ChannelMessage struct {
 	bytes []byte
@@ -19,19 +25,18 @@ func NewChannelReadWriter() *ChannelReadWriter {
 }
 
 func (rw *ChannelReadWriter) Read(b []byte) (int, error) {
-	for rw.buffer.Len() < len(b) {
-		msg, more := <-rw.messages
-		_, err := rw.buffer.Write(msg.bytes)
-		if err != nil {
-			panic(err)
-		}
-
-		if !more {
-			break
-		}
+	msg, more := <-rw.messages
+	_, err := rw.buffer.Write(msg.bytes)
+	if err != nil {
+		panic(err)
 	}
 
-	return rw.buffer.Read(b)
+	n, err := rw.buffer.Read(b)
+	if err == io.EOF && more {
+		return n, Waiting
+	} else {
+		return n, err
+	}
 }
 
 func (rw *ChannelReadWriter) Write(b []byte) (int, error) {

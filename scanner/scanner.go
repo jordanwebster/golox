@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/jordanwebster/golox/loxerror"
+	"github.com/jordanwebster/golox/loxio"
 	"github.com/jordanwebster/golox/token"
 )
 
@@ -57,12 +58,11 @@ func (scanner *Scanner) ScanTokens() {
 	}
 
 	scanner.tokens <- token.Token{Type: token.EOF, Lexeme: "", Literal: nil, Line: scanner.line}
-    close(scanner.tokens)
+	close(scanner.tokens)
 }
 
 func (scanner *Scanner) isAtEnd() bool {
-	bytes, err := scanner.reader.Peek(1)
-	if len(bytes) == 0 && err == io.EOF {
+	if scanner.peek() == 0 {
 		return true
 	}
 
@@ -162,18 +162,34 @@ func (scanner *Scanner) match(expected byte) bool {
 }
 
 func (scanner *Scanner) peek() byte {
-	bytes, _ := scanner.reader.Peek(1)
+	bytes, err := scanner.reader.Peek(1)
 	if len(bytes) < 1 {
-		return 0
+		if err == io.EOF {
+			return 0
+		} else if err == loxio.Waiting {
+			// This will issue another call to the underlying channel which will
+			// block until more data is received.
+			return scanner.peek()
+		} else {
+			panic(err)
+		}
 	}
 
 	return bytes[0]
 }
 
 func (scanner *Scanner) peekNext() byte {
-	bytes, _ := scanner.reader.Peek(2)
+	bytes, err := scanner.reader.Peek(1)
 	if len(bytes) < 2 {
-		return 0
+		if err == io.EOF {
+			return 0
+		} else if err == loxio.Waiting {
+			// This will issue another call to the underlying channel which will
+			// block until more data is received.
+			return scanner.peek()
+		} else {
+			panic(err)
+		}
 	}
 
 	return bytes[1]
@@ -184,13 +200,13 @@ func (scanner *Scanner) addToken(tokenType token.TokenType) {
 }
 
 func (scanner *Scanner) addTokenWithLiteral(tokenType token.TokenType, literal interface{}) {
-    token := token.Token{
+	token := token.Token{
 		Type:    tokenType,
 		Lexeme:  string(scanner.current),
 		Literal: literal,
 		Line:    scanner.line,
 	}
-    scanner.tokens <- token
+	scanner.tokens <- token
 }
 
 func (scanner *Scanner) addString() {
