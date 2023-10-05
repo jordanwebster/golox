@@ -467,7 +467,50 @@ func (parser *Parser) unary() (ast.Expr, error) {
 		}, nil
 	}
 
-	return parser.primary()
+	return parser.call()
+}
+
+func (parser *Parser) call() (ast.Expr, error) {
+	expr, err := parser.primary()
+	if err != nil {
+		return nil, err
+	}
+
+	for parser.match(token.LEFT_PAREN) {
+		expr, err = parser.finish_call(expr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return expr, nil
+}
+
+func (parser *Parser) finish_call(callee ast.Expr) (ast.Expr, error) {
+	var arguments []ast.Expr
+	if !parser.check(token.RIGHT_PAREN) {
+		for {
+			arg, err := parser.expression()
+			if err != nil {
+				return nil, err
+			}
+			arguments = append(arguments, arg)
+			if len(arguments) >= 255 {
+				loxerror.ReportError(loxerror.NewParseError(parser.peek(), "Can't have more than 255 arguments."))
+			}
+
+			if !parser.match(token.COMMA) {
+				break
+			}
+		}
+	}
+
+	paren, err := parser.consume(token.RIGHT_PAREN, "Expect ')' after arguments.")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.CallExpr{Callee: callee, Paren: paren, Arguments: arguments}, nil
 }
 
 func (parser *Parser) primary() (ast.Expr, error) {

@@ -39,3 +39,9 @@ type LogicalExpr struct {
 	Left     Expr
 	Right    Expr
 }
+
+type CallExpr struct {
+	Callee    Expr
+	Paren     token.Token
+	Arguments []Expr
+}

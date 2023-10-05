@@ -8,6 +8,7 @@ type ExprVisitor interface {
 	VisitVariableExpr(expr *VariableExpr) (interface{}, error)
 	VisitAssignExpr(expr *AssignExpr) (interface{}, error)
 	VisitLogicalExpr(expr *LogicalExpr) (interface{}, error)
+	VisitCallExpr(expr *CallExpr) (interface{}, error)
 }
 
 func (expr *BinaryExpr) Accept(visitor ExprVisitor) (interface{}, error) {
@@ -30,4 +31,7 @@ func (expr *AssignExpr) Accept(visitor ExprVisitor) (interface{}, error) {
 }
 func (expr *LogicalExpr) Accept(visitor ExprVisitor) (interface{}, error) {
 	return visitor.VisitLogicalExpr(expr)
+}
+func (expr *CallExpr) Accept(visitor ExprVisitor) (interface{}, error) {
+	return visitor.VisitCallExpr(expr)
 }

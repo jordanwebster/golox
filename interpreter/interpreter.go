@@ -12,12 +12,16 @@ import (
 )
 
 type Interpreter struct {
+    globals *environment.Environment
 	environment *environment.Environment
 }
 
 func NewInterpreter() *Interpreter {
+    globals := environment.NewGlobalEnvironment()
+    globals.Define("clock", &ClockCallable{})
 	return &Interpreter{
-		environment: environment.NewGlobalEnvironment(),
+        globals: globals,
+		environment: globals,
 	}
 }
 
@@ -41,6 +45,32 @@ func (interpreter *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) (interfa
 
 func (interpreter *Interpreter) VisitGroupingExpr(expr *ast.GroupingExpr) (interface{}, error) {
 	return interpreter.evaluate(expr.Expression)
+}
+
+func (interpreter *Interpreter) VisitCallExpr(expr *ast.CallExpr) (interface{}, error) {
+	callee, err := interpreter.evaluate(expr.Callee)
+	if err != nil {
+		return nil, err
+	}
+
+	var arguments []interface{}
+	for _, arg := range expr.Arguments {
+		evaluated_arg, err := interpreter.evaluate(arg)
+		if err != nil {
+			return nil, err
+		}
+		arguments = append(arguments, evaluated_arg)
+	}
+
+	function, ok := callee.(LoxCallable)
+	if !ok {
+		return nil, loxerror.NewRuntimeError(expr.Paren, "Can only calls functions and classes.")
+	}
+
+	if len(arguments) != function.Arity() {
+		return nil, loxerror.NewRuntimeError(expr.Paren, fmt.Sprintf("Expected %d arguments but got %d.", function.Arity(), len(arguments)))
+	}
+	return function.Call(interpreter, arguments)
 }
 
 func (interpreter *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) (interface{}, error) {
