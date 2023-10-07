@@ -33,3 +33,14 @@ type WhileStmt struct {
 	Condition Expr
 	Body      Stmt
 }
+
+type FunctionStmt struct {
+	Name       token.Token
+	Parameters []token.Token
+	Body       []Stmt
+}
+
+type ReturnStmt struct {
+	Keyword token.Token
+	Value   Expr
+}

@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/jordanwebster/golox/ast"
 	"github.com/jordanwebster/golox/loxerror"
 	"github.com/jordanwebster/golox/token"
@@ -42,6 +44,8 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return parser.ifStatement()
 	} else if parser.match(token.PRINT) {
 		return parser.printStatement()
+    } else if parser.match(token.RETURN) {
+        return parser.returnStatement()
 	} else if parser.match(token.WHILE) {
 		return parser.whileStatement()
 	} else if parser.match(token.LEFT_BRACE) {
@@ -54,7 +58,9 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 func (parser *Parser) declaration() ast.Stmt {
 	var err error
 	var stmt ast.Stmt
-	if parser.match(token.VAR) {
+	if parser.match(token.FUN) {
+		stmt, err = parser.functionStatement("function")
+	} else if parser.match(token.VAR) {
 		stmt, err = parser.varDeclaration()
 	} else {
 		stmt, err = parser.statement()
@@ -116,6 +122,24 @@ func (parser *Parser) printStatement() (ast.Stmt, error) {
 	return &ast.PrintStmt{
 		Expression: expr,
 	}, nil
+}
+
+func (parser *Parser) returnStatement() (ast.Stmt, error) {
+    keyword := parser.previous()
+    var value ast.Expr = nil
+    var err error = nil
+    if !parser.check(token.SEMICOLON) {
+        value, err = parser.expression()
+        if err != nil {
+            return nil, err
+        }
+    }
+
+    parser.consume(token.SEMICOLON, "Expect ';' after return value.")
+    return &ast.ReturnStmt{
+        Keyword: keyword,
+        Value: value,
+    }, nil
 }
 
 func (parser *Parser) forStatement() (ast.Stmt, error) {
@@ -229,6 +253,17 @@ func (parser *Parser) whileStatement() (ast.Stmt, error) {
 }
 
 func (parser *Parser) blockStatement() (ast.Stmt, error) {
+	statements, err := parser.block()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.BlockStmt{
+		Statements: statements,
+	}, nil
+}
+
+func (parser *Parser) block() ([]ast.Stmt, error) {
 	statements := make([]ast.Stmt, 0, 8)
 
 	for !parser.check(token.RIGHT_BRACE) && !parser.isAtEnd() {
@@ -238,11 +273,12 @@ func (parser *Parser) blockStatement() (ast.Stmt, error) {
 		}
 	}
 
-	parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
+	_, err := parser.consume(token.RIGHT_BRACE, "Expect '}' after block.")
+	if err != nil {
+		return nil, err
+	}
 
-	return &ast.BlockStmt{
-		Statements: statements,
-	}, nil
+	return statements, nil
 }
 
 func (parser *Parser) expressionStatement() (ast.Stmt, error) {
@@ -258,6 +294,47 @@ func (parser *Parser) expressionStatement() (ast.Stmt, error) {
 
 	return &ast.ExprStmt{
 		Expression: expr,
+	}, nil
+}
+
+func (parser *Parser) functionStatement(kind string) (ast.Stmt, error) {
+	name, err := parser.consume(token.IDENTIFIER, fmt.Sprintf("Expect %s name.", kind))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = parser.consume(token.LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", kind))
+
+	var parameters []token.Token
+	if !parser.check(token.RIGHT_PAREN) {
+		for {
+			if len(parameters) >= 255 {
+				loxerror.ReportError(loxerror.NewParseError(parser.peek(), "Can't have more than 255 parameters"))
+			}
+
+			parameter, err := parser.consume(token.IDENTIFIER, "Expect parameter name.")
+			if err != nil {
+				return nil, err
+			}
+			parameters = append(parameters, parameter)
+
+			if !parser.match(token.COMMA) {
+				break
+			}
+		}
+	}
+
+	_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after parameters")
+	_, err = parser.consume(token.LEFT_BRACE, fmt.Sprintf("Expect '{' before %s body."))
+	body, err := parser.block()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.FunctionStmt{
+		Name:       name,
+		Parameters: parameters,
+		Body:       body,
 	}, nil
 }
 

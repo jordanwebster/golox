@@ -12,15 +12,15 @@ import (
 )
 
 type Interpreter struct {
-    globals *environment.Environment
+	globals     *environment.Environment
 	environment *environment.Environment
 }
 
 func NewInterpreter() *Interpreter {
-    globals := environment.NewGlobalEnvironment()
-    globals.Define("clock", &ClockCallable{})
+	globals := environment.NewGlobalEnvironment()
+	globals.Define("clock", &ClockCallable{})
 	return &Interpreter{
-        globals: globals,
+		globals:     globals,
 		environment: globals,
 	}
 }
@@ -220,6 +220,25 @@ func (interpreter *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) error {
 	}
 	fmt.Println(stringify(value))
 	return nil
+}
+
+func (interpreter *Interpreter) VisitFunctionStmt(stmt *ast.FunctionStmt) error {
+	function := NewFunction(stmt, interpreter.environment)
+	interpreter.environment.Define(stmt.Name.Lexeme, function)
+	return nil
+}
+
+func (interpreter *Interpreter) VisitReturnStmt(stmt *ast.ReturnStmt) error {
+	var value interface{} = nil
+	var err error = nil
+	if stmt.Value != nil {
+		value, err = interpreter.evaluate(stmt.Value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return &Return{Value: value}
 }
 
 func (interpreter *Interpreter) VisitWhileStmt(stmt *ast.WhileStmt) error {
